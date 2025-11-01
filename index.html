@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор стоимости услуги</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+        .btn-calculate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        .dynamic-section {
+            transition: all 0.3s ease;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container my-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h2 class="h5 mb-0">Калькулятор стоимости услуги</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="calculatorForm">
+                            
+                            <!-- Поле для ввода количества -->
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">Количество:</label>
+                                <input type="text" 
+                                       id="quantity" 
+                                       class="form-control" 
+                                       placeholder="Введите количество"
+                                       required
+                                       pattern="^[1-9][0-9]*$"
+                                       value="1">
+                                <div class="form-text">Только целые положительные числа</div>
+                                <div id="quantityError" class="invalid-feedback" style="display: none;">
+                                    Пожалуйста, введите корректное количество (только цифры, больше 0)
+                                </div>
+                            </div>
+
+                            <!-- Выбор типа услуги радиокнопками -->
+                            <div class="mb-3">
+                                <label class="form-label">Тип услуги:</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="serviceType" id="type1" value="basic" checked>
+                                    <label class="form-check-label" for="type1">
+                                        Базовая услуга - 1 000 руб.
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="serviceType" id="type2" value="premium">
+                                    <label class="form-check-label" for="type2">
+                                        Премиум услуга - 2 500 руб.
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="serviceType" id="type3" value="vip">
+                                    <label class="form-check-label" for="type3">
+                                        VIP услуга - 5 000 руб.
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Динамические секции для опций и свойств -->
+                            
+                            <!-- Секция опций (для premium) -->
+                            <div id="optionsSection" class="mb-3 dynamic-section hidden">
+                                <label for="options" class="form-label">Дополнительные опции:</label>
+                                <select id="options" class="form-select">
+                                    <option value="0">Без дополнительных опций</option>
+                                    <option value="500">Срочное выполнение (+500 руб.)</option>
+                                    <option value="1000">Расширенная поддержка (+1 000 руб.)</option>
+                                    <option value="1500">Премиум-отчетность (+1 500 руб.)</option>
+                                </select>
+                            </div>
+
+                            <!-- Секция свойств (для vip) -->
+                            <div id="propertiesSection" class="mb-3 dynamic-section hidden">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="expressProperty" value="2000">
+                                    <label class="form-check-label" for="expressProperty">
+                                        Экспресс-обслуживание (+2 000 руб.)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Блок отображения расчета -->
+                            <div id="calculationResult" class="alert alert-info">
+                                <h6 class="alert-heading">Расчет стоимости:</h6>
+                                <div id="baseCost" class="mb-1">Базовая стоимость: 1 000 руб.</div>
+                                <div id="optionsCost" class="mb-1 hidden">Доп. опции: 0 руб.</div>
+                                <div id="propertiesCost" class="mb-1 hidden">Доп. свойства: 0 руб.</div>
+                                <div id="totalCost" class="mb-0 fs-5 fw-bold">Итого: 1 000 руб.</div>
+                            </div>
+
+                            <!-- Сообщения об ошибках -->
+                            <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                                <p id="errorText" class="mb-0"></p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white py-4 mt-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p class="mb-0">&copy; 2025 Артём Лобов</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            'use strict';
+            
+            // Элементы формы
+            const quantityInput = document.getElementById('quantity');
+            const serviceTypeRadios = document.querySelectorAll('input[name="serviceType"]');
+            const optionsSection = document.getElementById('optionsSection');
+            const optionsSelect = document.getElementById('options');
+            const propertiesSection = document.getElementById('propertiesSection');
+            const expressProperty = document.getElementById('expressProperty');
+            
+            // Элементы отображения результатов
+            const calculationResult = document.getElementById('calculationResult');
+            const baseCostElement = document.getElementById('baseCost');
+            const optionsCostElement = document.getElementById('optionsCost');
+            const propertiesCostElement = document.getElementById('propertiesCost');
+            const totalCostElement = document.getElementById('totalCost');
+            const errorMessage = document.getElementById('errorMessage');
+            const quantityError = document.getElementById('quantityError');
+            
+            // Цены базовых услуг
+            const basePrices = {
+                basic: 1000,
+                premium: 2500,
+                vip: 5000
+            };
+            
+            // Текущие значения
+            let currentServiceType = 'basic';
+            let currentQuantity = 1;
+            let currentOptionsCost = 0;
+            let currentPropertiesCost = 0;
+            
+            const numberRegex = /^[1-9][0-9]*$/;
+            
+            // Функции валидации
+            function validateQuantity(value) {
+                return numberRegex.test(value);
+            }
+            
+            function hideErrorMessages() {
+                errorMessage.style.display = 'none';
+                quantityError.style.display = 'none';
+                quantityInput.classList.remove('is-invalid');
+            }
+            
+            // Функции обновления интерфейса
+            function updateDynamicSections() {
+                // Скрываем все секции
+                optionsSection.classList.add('hidden');
+                optionsCostElement.classList.add('hidden');
+                propertiesSection.classList.add('hidden');
+                propertiesCostElement.classList.add('hidden');
+                
+                // Показываем нужные секции в зависимости от типа услуги
+                switch(currentServiceType) {
+                    case 'premium':
+                        optionsSection.classList.remove('hidden');
+                        optionsCostElement.classList.remove('hidden');
+                        break;
+                    case 'vip':
+                        propertiesSection.classList.remove('hidden');
+                        propertiesCostElement.classList.remove('hidden');
+                        break;
+                    // Для basic ничего не показываем
+                }
+            }
+            
+            // Функции расчета стоимости
+            function calculateTotalCost() {
+                const basePrice = basePrices[currentServiceType];
+                const totalBaseCost = basePrice * currentQuantity;
+                const totalOptionsCost = currentOptionsCost * currentQuantity;
+                const totalPropertiesCost = currentPropertiesCost * currentQuantity;
+                
+                const totalCost = totalBaseCost + totalOptionsCost + totalPropertiesCost;
+                
+                return {
+                    base: totalBaseCost,
+                    options: totalOptionsCost,
+                    properties: totalPropertiesCost,
+                    total: totalCost
+                };
+            }
+            
+            function updateCalculationDisplay() {
+                const costs = calculateTotalCost();
+                
+                baseCostElement.textContent = `Базовая стоимость: ${costs.base.toLocaleString('ru-RU')} руб.`;
+                
+                if (currentServiceType === 'premium') {
+                    optionsCostElement.textContent = `Доп. опции: ${costs.options.toLocaleString('ru-RU')} руб.`;
+                }
+                
+                if (currentServiceType === 'vip') {
+                    propertiesCostElement.textContent = `Доп. свойства: ${costs.properties.toLocaleString('ru-RU')} руб.`;
+                }
+                
+                totalCostElement.textContent = `Итого: ${costs.total.toLocaleString('ru-RU')} руб.`;
+            }
+            
+            // Обработчики событий
+            function handleQuantityChange() {
+                const value = quantityInput.value.trim();
+                
+                if (!value) {
+                    quantityError.textContent = 'Пожалуйста, введите количество';
+                    quantityError.style.display = 'block';
+                    quantityInput.classList.add('is-invalid');
+                    return;
+                }
+                
+                if (!validateQuantity(value)) {
+                    quantityError.textContent = 'Количество должно быть целым положительным числом (только цифры, больше 0)';
+                    quantityError.style.display = 'block';
+                    quantityInput.classList.add('is-invalid');
+                    return;
+                }
+                
+                hideErrorMessages();
+                currentQuantity = parseInt(value, 10);
+                updateCalculationDisplay();
+            }
+            
+            function handleServiceTypeChange(event) {
+                currentServiceType = event.target.value;
+                
+                // Сбрасываем дополнительные стоимости при смене типа услуги
+                if (currentServiceType !== 'premium') {
+                    optionsSelect.value = '0';
+                    currentOptionsCost = 0;
+                }
+                
+                if (currentServiceType !== 'vip') {
+                    expressProperty.checked = false;
+                    currentPropertiesCost = 0;
+                }
+                
+                updateDynamicSections();
+                updateCalculationDisplay();
+            }
+            
+            function handleOptionsChange() {
+                currentOptionsCost = parseInt(optionsSelect.value, 10);
+                updateCalculationDisplay();
+            }
+            
+            function handlePropertiesChange() {
+                currentPropertiesCost = expressProperty.checked ? parseInt(expressProperty.value, 10) : 0;
+                updateCalculationDisplay();
+            }
+            
+            // Инициализация событий
+            quantityInput.addEventListener('input', handleQuantityChange);
+            quantityInput.addEventListener('blur', handleQuantityChange);
+            
+            serviceTypeRadios.forEach(radio => {
+                radio.addEventListener('change', handleServiceTypeChange);
+            });
+            
+            optionsSelect.addEventListener('change', handleOptionsChange);
+            expressProperty.addEventListener('change', handlePropertiesChange);
+            
+            // Инициализация при загрузке
+            updateDynamicSections();
+            updateCalculationDisplay();
+            
+            console.log('Калькулятор стоимости услуги инициализирован');
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
